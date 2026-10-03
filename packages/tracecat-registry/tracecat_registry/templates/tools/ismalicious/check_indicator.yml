@@ -1,0 +1,45 @@
+type: action
+definition:
+  title: Check indicator reputation
+  description: >-
+    Check the reputation of an IP address, domain, URL or MD5/SHA-1/SHA-256 hash.
+    Calls GET /check. Returns the complete HTTP result with vendor evidence,
+    risk, confidence and provenance where available. A false malicious flag does
+    not prove safety; unknown hashes stay unknown. Uses the account's lookup quota.
+    Set ISMALICIOUS_API_CREDENTIAL to Base64(apiKey:apiSecret), not the API key alone.
+    Inspect status_code before interpreting data; 401/429 and invalid lookups are errors.
+  display_group: IsMalicious
+  doc_url: https://ismalicious.com/api-docs
+  namespace: tools.ismalicious
+  name: check_indicator
+  secrets:
+    - name: ismalicious
+      keys: ["ISMALICIOUS_API_CREDENTIAL"]
+  expects:
+    query:
+      type: str
+      description: IP address, domain, URL or file hash to check. Supply this or one of the ip / domain / hash aliases.
+    enrichment:
+      type: str | None
+      description: "Enrichment level: basic, standard, or full. "
+      default: null
+    base_url:
+      type: str | None
+      description: IsMalicious API base URL.
+      default: null
+  steps:
+    - ref: request
+      action: core.http_request
+      args:
+        url: ${{ inputs.base_url || VARS.ismalicious.base_url || "https://api.ismalicious.com" }}/check
+        method: GET
+        timeout: 30
+        follow_redirects: false
+        verify_ssl: true
+        headers:
+          X-API-KEY: ${{ SECRETS.ismalicious.ISMALICIOUS_API_CREDENTIAL }}
+          Accept: application/json
+        params:
+          query: ${{ inputs.query }}
+          enrichment: ${{ inputs.enrichment }}
+  returns: ${{ steps.request.result }}
